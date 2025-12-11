@@ -143,22 +143,6 @@ if (document.readyState === 'loading') {
     // DOM уже загружен
     initializeApp();
     setTimeout(hideLoadingScreen, 100);
-    // Инициализация состояний форм
-    setTimeout(() => {
-        const policyCheckbox = document.getElementById('register-policy');
-        if (policyCheckbox) {
-            policyCheckbox.addEventListener('change', updateRegisterButtonState);
-            updateRegisterButtonState();
-        }
-        const codeInput = document.getElementById('register-code');
-        if (codeInput) {
-            codeInput.addEventListener('input', updateRegisterButtonState);
-        }
-        const policyVerifyCheckbox = document.getElementById('register-policy-verify');
-        if (policyVerifyCheckbox) {
-            policyVerifyCheckbox.addEventListener('change', updateRegisterButtonState);
-        }
-    }, 500);
 }
 
 // Скрываем экран загрузки при полной загрузке страницы (включая все ресурсы)
@@ -1043,7 +1027,7 @@ function closeAuthModal() {
             err.classList.remove('active');
             err.textContent = '';
         });
-        // Очищаем сообщения об успехе
+        // Очищаем успешные сообщения
         document.querySelectorAll('.auth-success').forEach(success => {
             success.style.display = 'none';
             success.textContent = '';
@@ -1055,14 +1039,10 @@ function closeAuthModal() {
         if (formFields) formFields.style.display = 'block';
         pendingRegistration = { email: null, username: null, password: null };
         document.getElementById('register-form')?.reset();
-        // Сбрасываем галочку политики
-        const policyCheckbox = document.getElementById('register-policy');
-        if (policyCheckbox) policyCheckbox.checked = false;
-        const policyVerifyCheckbox = document.getElementById('register-policy-verify');
-        if (policyVerifyCheckbox) policyVerifyCheckbox.checked = false;
-        // Скрываем секцию восстановления пароля
-        const forgotPasswordSection = document.getElementById('forgot-password-section');
-        if (forgotPasswordSection) forgotPasswordSection.style.display = 'none';
+        // Сбрасываем чекбокс
+        const policyCheck = document.getElementById('register-policy-check');
+        if (policyCheck) policyCheck.checked = false;
+        updateRegisterButton();
     }
 }
 
@@ -1082,9 +1062,6 @@ function switchAuthTab(tab) {
     
     if (tab === 'login') {
         document.getElementById('login-form').classList.add('active');
-        // Скрываем секцию восстановления пароля
-        const forgotPasswordSection = document.getElementById('forgot-password-section');
-        if (forgotPasswordSection) forgotPasswordSection.style.display = 'none';
     } else {
         document.getElementById('register-form').classList.add('active');
     }
@@ -1094,62 +1071,11 @@ function switchAuthTab(tab) {
         err.classList.remove('active');
         err.textContent = '';
     });
-    
-    // Очищаем сообщения об успехе
+    // Очищаем успешные сообщения
     document.querySelectorAll('.auth-success').forEach(success => {
         success.style.display = 'none';
         success.textContent = '';
     });
-    
-    // Сбрасываем форму регистрации при переключении
-    if (tab === 'register') {
-        const verifySection = document.getElementById('register-verify-section');
-        const formFields = document.getElementById('register-form-fields');
-        if (verifySection) verifySection.style.display = 'none';
-        if (formFields) formFields.style.display = 'block';
-        pendingRegistration = { email: null, username: null, password: null };
-        document.getElementById('register-form')?.reset();
-        const policyCheckbox = document.getElementById('register-policy');
-        if (policyCheckbox) policyCheckbox.checked = false;
-        const policyVerifyCheckbox = document.getElementById('register-policy-verify');
-        if (policyVerifyCheckbox) policyVerifyCheckbox.checked = false;
-        updateRegisterButtonState();
-    }
-}
-}
-
-async function handleGoogleLogin() {
-    const errorEl = document.getElementById('login-error');
-    
-    if (!supabaseClient) {
-        errorEl.textContent = 'Ошибка: Supabase не инициализирован';
-        errorEl.classList.add('active');
-        return;
-    }
-    
-    try {
-        errorEl.classList.remove('active');
-        errorEl.textContent = '';
-        
-        // Открываем окно входа через Google
-        const { data, error } = await supabaseClient.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: 'https://reminkoanime.github.io/34fg43fg4f3g43fg4f3g43fg/',
-                queryParams: {
-                    access_type: 'offline',
-                    prompt: 'consent',
-                }
-            }
-        });
-        
-        if (error) throw error;
-        
-        // Обработка callback будет через onAuthStateChange
-    } catch (error) {
-        errorEl.textContent = error.message || 'Ошибка входа через Google';
-        errorEl.classList.add('active');
-    }
 }
 
 async function handleLogin(event) {
@@ -1330,17 +1256,19 @@ async function handleRegister(event) {
             });
             
             if (error) {
-                // Если ошибка связана с тем что пользователь уже существует
+                // Если ошибка связана с тем что пользователь уже существует, пробуем просто отправить код
                 if (error.message && (error.message.includes('already') || error.message.includes('registered'))) {
-                    errorEl.textContent = 'Пользователь с таким email уже зарегистрирован. Используйте вход или восстановление пароля.';
-                    errorEl.classList.add('active');
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Зарегистрироваться';
-                    }
-                    return;
+                    // Пользователь уже существует, просто отправляем код для входа
+                    const { data: otpData, error: otpError } = await supabaseClient.auth.signInWithOtp({
+                        email: email,
+                        options: {
+                            shouldCreateUser: false
+                        }
+                    });
+                    if (otpError) throw otpError;
+                } else {
+                    throw error;
                 }
-                throw error;
             }
             
             // Показываем секцию ввода кода
@@ -1348,12 +1276,7 @@ async function handleRegister(event) {
             if (verifySection) {
                 verifySection.style.display = 'block';
                 document.getElementById('verify-email-display').textContent = email;
-                const codeInput = document.getElementById('register-code');
-                if (codeInput) {
-                    codeInput.focus();
-                    codeInput.value = ''; // Очищаем поле кода
-                }
-                updateRegisterButtonState(); // Обновляем состояние кнопки
+                document.getElementById('register-code').focus();
             }
             
             if (submitBtn) {
@@ -1397,7 +1320,27 @@ async function handleRegister(event) {
     }
 }
 
+function updateRegisterButton() {
+    const code = document.getElementById('register-code')?.value.trim().replace(/[^0-9]/g, '') || '';
+    const policyCheck = document.getElementById('register-policy-check');
+    const verifyBtn = document.getElementById('verify-register-btn');
+    
+    if (verifyBtn && policyCheck) {
+        const codeValid = code.length >= 6 && code.length <= 8;
+        const policyAccepted = policyCheck.checked;
+        verifyBtn.disabled = !(codeValid && policyAccepted);
+    }
+}
+
 async function verifyRegistrationCode() {
+    const policyCheck = document.getElementById('register-policy-check');
+    if (!policyCheck || !policyCheck.checked) {
+        const errorEl = document.getElementById('register-error');
+        errorEl.textContent = 'Необходимо принять политику конфиденциальности';
+        errorEl.classList.add('active');
+        return;
+    }
+    
     let code = document.getElementById('register-code').value.trim().replace(/[^0-9]/g, '');
     const errorEl = document.getElementById('register-error');
     const successEl = document.getElementById('register-success');
@@ -1412,7 +1355,14 @@ async function verifyRegistrationCode() {
     if (!code || code.length < 6 || code.length > 8) {
         errorEl.textContent = 'Введите код от 6 до 8 цифр';
         errorEl.classList.add('active');
+        updateRegisterButton();
         return;
+    }
+    
+    const verifyBtn = document.getElementById('verify-register-btn');
+    if (verifyBtn) {
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = 'Регистрация...';
     }
     
     if (!pendingRegistration.email || !supabaseClient) {
@@ -1434,16 +1384,8 @@ async function verifyRegistrationCode() {
         if (error) throw error;
         
         if (data.user && data.session) {
-            // Проверяем галочку политики
-            const policyCheckbox = document.getElementById('register-policy-verify');
-            if (!policyCheckbox || !policyCheckbox.checked) {
-                errorEl.textContent = 'Необходимо согласиться с политикой конфиденциальности';
-                errorEl.classList.add('active');
-                return;
-            }
-            
             // Регистрируем пользователя с паролем (так как OTP создал только пользователя)
-            // Обновляем пароль и метаданные
+            // Устанавливаем пароль и метаданные
             const { error: updateError } = await supabaseClient.auth.updateUser({
                 password: pendingRegistration.password,
                 data: {
@@ -1453,15 +1395,28 @@ async function verifyRegistrationCode() {
             });
             
             if (updateError) {
-                console.error('Ошибка обновления пароля:', updateError);
-                // Если не удалось установить пароль сразу, продолжаем
-                // Пользователь может использовать "Забыли пароль" если потребуется
-                // В большинстве случаев updateUser работает, но иногда может быть задержка
-                if (!updateError.message.includes('session') && !updateError.message.includes('already')) {
-                    console.warn('Пароль может быть не установлен сразу. Пользователь может использовать восстановление пароля.');
-                    // Не бросаем ошибку, так как пользователь уже зарегистрирован и может войти через OTP
+                // Если не удалось обновить пароль, пробуем через signUp
+                console.warn('Ошибка обновления пароля:', updateError);
+                // Пробуем установить пароль через повторную авторизацию
+                try {
+                    const { error: signInError } = await supabaseClient.auth.signInWithPassword({
+                        email: pendingRegistration.email,
+                        password: pendingRegistration.password
+                    });
+                    if (signInError) {
+                        // Если пароль не установлен, пробуем установить через API
+                        // В Supabase после verifyOtp пароль нужно установить явно
+                        await supabaseClient.auth.updateUser({
+                            password: pendingRegistration.password
+                        });
+                    }
+                } catch (err) {
+                    console.error('Ошибка установки пароля:', err);
                 }
             }
+            
+            // Сохраняем пароль в метаданных (для локального использования, если нужно)
+            // Но основная авторизация идет через Supabase
             
             // Авторизуем пользователя
             CONFIG.currentUser = {
@@ -1483,9 +1438,9 @@ async function verifyRegistrationCode() {
                 if (formFields) formFields.style.display = 'block';
                 if (verifySection) verifySection.style.display = 'none';
                 pendingRegistration = { email: null, username: null, password: null };
-                // Очищаем сообщение об успехе при закрытии
-                successEl.style.display = 'none';
-                successEl.textContent = '';
+                const policyCheck = document.getElementById('register-policy-check');
+                if (policyCheck) policyCheck.checked = false;
+                updateRegisterButton();
             }, 2000);
         }
     } catch (error) {
@@ -1493,96 +1448,13 @@ async function verifyRegistrationCode() {
         errorEl.classList.add('active');
         // Очищаем поле кода при ошибке
         document.getElementById('register-code').value = '';
-    }
-}
-
-// Функция для обновления состояния кнопки регистрации
-function updateRegisterButtonState() {
-    const verifySection = document.getElementById('register-verify-section');
-    const codeInput = document.getElementById('register-code');
-    const policyCheckbox = document.getElementById('register-policy-verify');
-    const verifyBtn = document.getElementById('verify-code-btn');
-    
-    if (verifySection && verifySection.style.display !== 'none') {
-        // В секции подтверждения кода
-        if (verifyBtn && codeInput && policyCheckbox) {
-            const code = codeInput.value.trim().replace(/[^0-9]/g, '');
-            const isValidCode = code.length >= 6 && code.length <= 8;
-            verifyBtn.disabled = !(isValidCode && policyCheckbox.checked);
+        updateRegisterButton();
+    } finally {
+        const verifyBtn = document.getElementById('verify-register-btn');
+        if (verifyBtn) {
+            verifyBtn.textContent = 'Зарегистрироваться';
+            updateRegisterButton();
         }
-    } else {
-        // В основной форме регистрации
-        const policyCheckboxMain = document.getElementById('register-policy');
-        const submitBtn = document.getElementById('register-submit-btn');
-        if (submitBtn && policyCheckboxMain) {
-            // Кнопка активна если галочка отмечена (HTML5 validation проверит остальное)
-            submitBtn.disabled = !policyCheckboxMain.checked;
-        }
-    }
-}
-
-// Функция для показа секции восстановления пароля
-function showForgotPassword() {
-    const forgotSection = document.getElementById('forgot-password-section');
-    if (forgotSection) {
-        forgotSection.style.display = forgotSection.style.display === 'none' ? 'block' : 'none';
-        // Очищаем сообщения при открытии
-        const resetError = document.getElementById('reset-error');
-        const resetSuccess = document.getElementById('reset-success');
-        if (resetError) {
-            resetError.classList.remove('active');
-            resetError.textContent = '';
-        }
-        if (resetSuccess) {
-            resetSuccess.style.display = 'none';
-            resetSuccess.textContent = '';
-        }
-    }
-}
-
-// Функция для сброса пароля
-async function handlePasswordReset() {
-    const email = document.getElementById('reset-email')?.value.trim();
-    const errorEl = document.getElementById('reset-error');
-    const successEl = document.getElementById('reset-success');
-    
-    if (!errorEl || !successEl) return;
-    
-    // Скрываем предыдущие сообщения
-    errorEl.classList.remove('active');
-    errorEl.textContent = '';
-    successEl.style.display = 'none';
-    successEl.textContent = '';
-    
-    if (!email) {
-        errorEl.textContent = 'Введите email';
-        errorEl.classList.add('active');
-        return;
-    }
-    
-    if (!supabaseClient) {
-        errorEl.textContent = 'Ошибка: Supabase не инициализирован';
-        errorEl.classList.add('active');
-        return;
-    }
-    
-    try {
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-            redirectTo: 'https://reminkoanime.github.io/34fg43fg4f3g43fg4f3g43fg/?reset=true'
-        });
-        
-        if (error) throw error;
-        
-        successEl.textContent = 'Письмо для сброса пароля отправлено на ' + email + '. Проверьте почту.';
-        successEl.style.display = 'block';
-        
-        // Очищаем поле email
-        if (document.getElementById('reset-email')) {
-            document.getElementById('reset-email').value = '';
-        }
-    } catch (error) {
-        errorEl.textContent = error.message || 'Ошибка при отправке письма для сброса пароля';
-        errorEl.classList.add('active');
     }
 }
 
@@ -1648,6 +1520,41 @@ async function logout() {
     CONFIG.currentUser = null;
     localStorage.removeItem('currentUser');
     updateAuthUI();
+}
+
+async function handleForgotPassword() {
+    const email = document.getElementById('login-username').value.trim();
+    const errorEl = document.getElementById('login-error');
+    const successEl = document.getElementById('password-reset-success');
+    
+    if (!email) {
+        errorEl.textContent = 'Введите email для восстановления пароля';
+        errorEl.classList.add('active');
+        return;
+    }
+    
+    if (!supabaseClient) {
+        errorEl.textContent = 'Ошибка: Supabase не подключен';
+        errorEl.classList.add('active');
+        return;
+    }
+    
+    try {
+        errorEl.classList.remove('active');
+        successEl.style.display = 'none';
+        
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: 'https://reminkoanime.github.io/34fg43fg4f3g43fg4f3g43fg/'
+        });
+        
+        if (error) throw error;
+        
+        successEl.textContent = 'Ссылка для сброса пароля отправлена на ' + email;
+        successEl.style.display = 'block';
+    } catch (error) {
+        errorEl.textContent = error.message || 'Ошибка отправки письма для сброса пароля';
+        errorEl.classList.add('active');
+    }
 }
 
 async function resendConfirmationEmail(email) {
@@ -1759,15 +1666,10 @@ async function initializeAuth() {
                 CONFIG.currentUser = {
                     id: session.user.id,
                     email: session.user.email,
-                    username: session.user.user_metadata?.username || session.user.user_metadata?.full_name || session.user.email.split('@')[0]
+                    username: session.user.user_metadata?.username || session.user.email.split('@')[0]
                 };
                 saveData();
                 updateAuthUI();
-                // Закрываем модальное окно если открыто
-                const authModal = document.getElementById('auth-modal');
-                if (authModal && authModal.classList.contains('active')) {
-                    closeAuthModal();
-                }
             } else if (event === 'SIGNED_OUT') {
                 CONFIG.currentUser = null;
                 localStorage.removeItem('currentUser');
