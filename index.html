@@ -292,8 +292,21 @@
                     <label for="login-password">Пароль</label>
                     <input type="password" id="login-password" required placeholder="Введите пароль">
                 </div>
+                <div class="form-group forgot-password-link">
+                    <a href="#" onclick="event.preventDefault(); showForgotPassword(); return false;">Забыли пароль?</a>
+                </div>
                 <button type="submit" class="auth-submit-btn">Войти</button>
                 <p class="auth-error" id="login-error"></p>
+                <div id="forgot-password-section" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                    <h3 style="margin-bottom: 15px; color: var(--text-primary);">Восстановление пароля</h3>
+                    <div class="form-group">
+                        <label for="reset-email">Email</label>
+                        <input type="email" id="reset-email" placeholder="Введите ваш email">
+                    </div>
+                    <button type="button" class="auth-submit-btn" onclick="handlePasswordReset()">Отправить ссылку для сброса</button>
+                    <p class="auth-error" id="reset-error"></p>
+                    <p class="auth-success" id="reset-success" style="display: none;"></p>
+                </div>
             </form>
             
             <!-- Register Form -->
@@ -315,7 +328,13 @@
                         <label for="register-confirm">Подтвердите пароль</label>
                         <input type="password" id="register-confirm" required placeholder="Повторите пароль">
                     </div>
-                    <button type="submit" class="auth-submit-btn">Зарегистрироваться</button>
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="register-policy" required>
+                            <span>Я согласен с <a href="#" onclick="event.preventDefault(); alert('Политика конфиденциальности будет добавлена позже'); return false;">политикой конфиденциальности</a></span>
+                        </label>
+                    </div>
+                    <button type="submit" class="auth-submit-btn" id="register-submit-btn">Зарегистрироваться</button>
                 </div>
                 
                 <!-- Код подтверждения -->
@@ -332,11 +351,17 @@
                         <label for="register-code">Код подтверждения</label>
                         <input type="text" id="register-code" maxlength="8" placeholder="000000" pattern="[0-9]{6,8}" 
                                style="text-align: center; font-size: 24px; letter-spacing: 8px; font-weight: 600;"
-                               oninput="this.value = this.value.replace(/[^0-9]/g, '').substring(0, 8); if(this.value.length >= 6 && this.value.length <= 8) { verifyRegistrationCode(); }"
-                               onkeypress="if(event.key === 'Enter') verifyRegistrationCode();">
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '').substring(0, 8); updateRegisterButtonState();"
+                               onkeypress="if(event.key === 'Enter' && document.getElementById('register-policy-verify').checked) { verifyRegistrationCode(); }">
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="register-policy-verify" onchange="updateRegisterButtonState()">
+                            <span>Я согласен с <a href="#" onclick="event.preventDefault(); alert('Политика конфиденциальности будет добавлена позже'); return false;">политикой конфиденциальности</a></span>
+                        </label>
                     </div>
                     <div class="verify-actions">
-                        <button type="button" class="auth-submit-btn" onclick="verifyRegistrationCode()">Подтвердить код</button>
+                        <button type="button" class="auth-submit-btn" id="verify-code-btn" onclick="verifyRegistrationCode()" disabled>Зарегистрироваться</button>
                         <button type="button" class="resend-code-btn" onclick="resendRegistrationCode()">Отправить код повторно</button>
                     </div>
                 </div>
