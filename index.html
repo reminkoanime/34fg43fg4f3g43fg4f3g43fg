@@ -326,13 +326,13 @@
                             <polyline points="22,6 12,13 2,6"></polyline>
                         </svg>
                         <p>Код подтверждения отправлен на <strong id="verify-email-display"></strong></p>
-                        <p class="verify-hint">Проверьте почту и введите 6-значный код</p>
+                        <p class="verify-hint">Проверьте почту и введите код (6-8 цифр). Скопируйте весь код из письма!</p>
                     </div>
                     <div class="form-group">
                         <label for="register-code">Код подтверждения</label>
                         <input type="text" id="register-code" maxlength="8" placeholder="000000" pattern="[0-9]{6,8}" 
                                style="text-align: center; font-size: 24px; letter-spacing: 8px; font-weight: 600;"
-                               oninput="this.value = this.value.replace(/[^0-9]/g, '').substring(0, 8); if(this.value.length === 6 || this.value.length === 8) { this.value = this.value.substring(0, 6); verifyRegistrationCode(); }"
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '').substring(0, 8); if(this.value.length >= 6 && this.value.length <= 8) { verifyRegistrationCode(); }"
                                onkeypress="if(event.key === 'Enter') verifyRegistrationCode();">
                     </div>
                     <div class="verify-actions">

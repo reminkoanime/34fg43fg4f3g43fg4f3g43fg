@@ -1317,14 +1317,9 @@ async function verifyRegistrationCode() {
     errorEl.classList.remove('active');
     successEl.style.display = 'none';
     
-    // Обрезаем код до 6 символов (если пришло 8)
-    if (code.length > 6) {
-        code = code.substring(0, 6);
-        document.getElementById('register-code').value = code;
-    }
-    
-    if (!code || code.length < 6) {
-        errorEl.textContent = 'Введите 6-значный код';
+    // Принимаем код от 6 до 8 символов (не обрезаем!)
+    if (!code || code.length < 6 || code.length > 8) {
+        errorEl.textContent = 'Введите код от 6 до 8 цифр';
         errorEl.classList.add('active');
         return;
     }
@@ -1336,8 +1331,9 @@ async function verifyRegistrationCode() {
     }
     
     try {
-        // Проверяем OTP код (всегда используем первые 6 символов)
-        const codeToVerify = code.substring(0, 6);
+        // Проверяем OTP код (используем полный код как есть - 6 или 8 цифр)
+        // Supabase может генерировать токены разной длины
+        const codeToVerify = code;
         const { data, error } = await supabaseClient.auth.verifyOtp({
             email: pendingRegistration.email,
             token: codeToVerify,
