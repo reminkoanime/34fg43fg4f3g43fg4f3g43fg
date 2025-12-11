@@ -1307,7 +1307,7 @@ async function handleRegister(event) {
 }
 
 async function verifyRegistrationCode() {
-    const code = document.getElementById('register-code').value.trim();
+    let code = document.getElementById('register-code').value.trim().replace(/[^0-9]/g, '');
     const errorEl = document.getElementById('register-error');
     const successEl = document.getElementById('register-success');
     const verifySection = document.getElementById('register-verify-section');
@@ -1317,7 +1317,13 @@ async function verifyRegistrationCode() {
     errorEl.classList.remove('active');
     successEl.style.display = 'none';
     
-    if (!code || code.length !== 6) {
+    // Обрезаем код до 6 символов (если пришло 8)
+    if (code.length > 6) {
+        code = code.substring(0, 6);
+        document.getElementById('register-code').value = code;
+    }
+    
+    if (!code || code.length < 6) {
         errorEl.textContent = 'Введите 6-значный код';
         errorEl.classList.add('active');
         return;
@@ -1330,10 +1336,11 @@ async function verifyRegistrationCode() {
     }
     
     try {
-        // Проверяем OTP код
+        // Проверяем OTP код (всегда используем первые 6 символов)
+        const codeToVerify = code.substring(0, 6);
         const { data, error } = await supabaseClient.auth.verifyOtp({
             email: pendingRegistration.email,
-            token: code,
+            token: codeToVerify,
             type: 'email'
         });
         
