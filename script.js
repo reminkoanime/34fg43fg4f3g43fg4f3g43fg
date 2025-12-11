@@ -1118,6 +1118,40 @@ function switchAuthTab(tab) {
 }
 }
 
+async function handleGoogleLogin() {
+    const errorEl = document.getElementById('login-error');
+    
+    if (!supabaseClient) {
+        errorEl.textContent = 'Ошибка: Supabase не инициализирован';
+        errorEl.classList.add('active');
+        return;
+    }
+    
+    try {
+        errorEl.classList.remove('active');
+        errorEl.textContent = '';
+        
+        // Открываем окно входа через Google
+        const { data, error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: 'https://reminkoanime.github.io/34fg43fg4f3g43fg4f3g43fg/',
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent',
+                }
+            }
+        });
+        
+        if (error) throw error;
+        
+        // Обработка callback будет через onAuthStateChange
+    } catch (error) {
+        errorEl.textContent = error.message || 'Ошибка входа через Google';
+        errorEl.classList.add('active');
+    }
+}
+
 async function handleLogin(event) {
     event.preventDefault();
     
@@ -1725,10 +1759,15 @@ async function initializeAuth() {
                 CONFIG.currentUser = {
                     id: session.user.id,
                     email: session.user.email,
-                    username: session.user.user_metadata?.username || session.user.email.split('@')[0]
+                    username: session.user.user_metadata?.username || session.user.user_metadata?.full_name || session.user.email.split('@')[0]
                 };
                 saveData();
                 updateAuthUI();
+                // Закрываем модальное окно если открыто
+                const authModal = document.getElementById('auth-modal');
+                if (authModal && authModal.classList.contains('active')) {
+                    closeAuthModal();
+                }
             } else if (event === 'SIGNED_OUT') {
                 CONFIG.currentUser = null;
                 localStorage.removeItem('currentUser');
