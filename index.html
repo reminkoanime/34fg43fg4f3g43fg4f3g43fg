@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Re - Minko | Starting From Zero</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loader">
+            <div class="loader-ring"></div>
+            <div class="loader-ring"></div>
+            <div class="loader-ring"></div>
+        </div>
+        <p class="loading-text">Загрузка...</p>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar" id="navbar">
+        <div class="navbar-container">
+            <div class="logo" onclick="window.location.reload()">
+                <div class="logo-icon">
+                    <img src="fons/Fon.png" alt="Re - Minko Logo" class="logo-image" onerror="this.onerror=null; this.src='fons/Fon.jpg';">
+                </div>
+                <div class="logo-text">
+                    <div class="logo-title">
+                        <span class="gradient-text">Re</span>
+                        <span class="separator">-</span>
+                        <span class="gradient-text-reverse">Minko</span>
+                    </div>
+                    <div class="logo-subtitle">Starting From Zero</div>
+                </div>
+            </div>
+            <div class="nav-links">
+                <a href="#home" class="nav-link active" onclick="scrollToSection('home', event)">Главная</a>
+                <a href="#library" class="nav-link" onclick="scrollToSection('library', event)">Библиотека</a>
+                <a href="#favorites" class="nav-link" onclick="showFavorites()">Избранное</a>
+                <a href="#history" class="nav-link" onclick="showHistory()">История</a>
+                <a href="#stats" class="nav-link" onclick="showStats()">Статистика</a>
+            </div>
+            <div class="navbar-actions">
+                <button class="auth-btn" id="auth-btn" onclick="openAuthModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span id="auth-btn-text">Войти</span>
+                </button>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Темная/Светлая тема">
+                    <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Background Slideshow -->
+    <div id="background-container" class="background-container">
+        <div class="background-overlay"></div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Hero Section -->
+        <section id="home" class="hero-section">
+            <div class="hero-logo-decoration">
+                <img src="fons/Fon.png" alt="Re - Minko" class="hero-logo" onerror="this.onerror=null; this.src='fons/Fon.jpg';">
+            </div>
+            <div class="hero-content">
+                <h1 class="hero-title animate-fade-in">
+                    <span class="title-line">Добро пожаловать в</span>
+                    <span class="title-main">Re - Minko</span>
+                </h1>
+                <p class="hero-subtitle animate-fade-in-delay">
+                    Ваша коллекция аниме: <span id="anime-count" class="highlight">0</span> сериалов
+                </p>
+                
+                <!-- Search Bar -->
+                <div class="search-wrapper animate-fade-in-delay-2">
+                    <div class="search-container">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        <input type="text" id="search-input" class="search-input" 
+                               placeholder="Поиск аниме по названию..." 
+                               oninput="handleSearch()" 
+                               onfocus="this.parentElement.classList.add('focused')"
+                               onblur="this.parentElement.classList.remove('focused')">
+                        <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="quick-stats animate-fade-in-delay-3">
+                    <div class="quick-stat">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        <div>
+                            <div class="quick-stat-value" id="total-anime">0</div>
+                            <div class="quick-stat-label">Сериалов</div>
+                        </div>
+                    </div>
+                    <div class="quick-stat">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <div>
+                            <div class="quick-stat-value" id="total-episodes">0</div>
+                            <div class="quick-stat-label">Эпизодов</div>
+                        </div>
+                    </div>
+                    <div class="quick-stat">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                        <div>
+                            <div class="quick-stat-value">∞</div>
+                            <div class="quick-stat-label">Доступ</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters and Sorting -->
+        <section id="library" class="library-section">
+            <div class="section-header">
+                <h2 class="section-title" id="section-title">
+                    <span>Все аниме</span>
+                    <span class="title-count" id="filtered-count"></span>
+                </h2>
+                <div class="filters-bar">
+                    <select id="sort-select" class="filter-select" onchange="applyFilters()">
+                        <option value="title">По названию</option>
+                        <option value="year">По году</option>
+                        <option value="episodes">По эпизодам</option>
+                        <option value="rating">По рейтингу</option>
+                    </select>
+                    <button class="filter-btn" onclick="toggleFilters()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                        Фильтры
+                    </button>
+                </div>
+            </div>
+
+            <!-- Anime Grid -->
+            <div id="anime-grid" class="anime-grid"></div>
+            
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <div class="empty-illustration">
+                    <svg viewBox="0 0 200 200" class="empty-svg">
+                        <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" stroke-width="2" opacity="0.2"/>
+                        <path d="M60 80 L140 80 M60 120 L140 120" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.3"/>
+                        <circle cx="80" cy="100" r="15" fill="currentColor" opacity="0.2"/>
+                        <circle cx="120" cy="100" r="15" fill="currentColor" opacity="0.2"/>
+                    </svg>
+                </div>
+                <h3 class="empty-title">Ничего не найдено</h3>
+                <p class="empty-text">Попробуйте изменить запрос или добавить аниме в папку на вашем ПК</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Video Player Modal -->
+    <div id="player-modal" class="player-modal">
+        <div class="modal-backdrop" onclick="closePlayer()"></div>
+        <div class="modal-content player-modal-content">
+            <button class="modal-close" onclick="closePlayer()" aria-label="Закрыть">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            
+            <div id="player-info" class="player-info"></div>
+            
+            <div class="player-wrapper">
+                <div id="player-container" class="video-player-container">
+                    <div class="player-placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        <p>Выберите эпизод</p>
+                    </div>
+                </div>
+                
+                <div class="player-controls" id="player-controls" style="display: none;">
+                    <div class="control-bar">
+                        <input type="range" id="progress-bar" class="progress-bar" min="0" max="100" value="0" 
+                               oninput="seekVideo(this.value)" onchange="seekVideo(this.value)">
+                        <div class="time-info">
+                            <span id="current-time">0:00</span>
+                            <span>/</span>
+                            <span id="total-time">0:00</span>
+                        </div>
+                    </div>
+                    <div class="control-buttons">
+                        <button class="control-btn" onclick="togglePlay()" id="play-btn">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                        </button>
+                        <button class="control-btn" onclick="skipBackward()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                                <line x1="5" y1="19" x2="5" y2="5"></line>
+                            </svg>
+                            <span>10</span>
+                        </button>
+                        <button class="control-btn" onclick="skipForward()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                                <line x1="19" y1="5" x2="19" y2="19"></line>
+                            </svg>
+                            <span>10</span>
+                        </button>
+                        <div class="volume-control">
+                            <button class="control-btn" onclick="toggleMute()" id="mute-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                </svg>
+                            </button>
+                            <input type="range" id="volume-bar" class="volume-bar" min="0" max="100" value="100" 
+                                   oninput="changeVolume(this.value)">
+                        </div>
+                        <button class="control-btn" onclick="toggleFullscreen()" id="fullscreen-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="episodes-section">
+                <h3 class="episodes-title">Эпизоды</h3>
+                <div id="episodes-list" class="episodes-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="auth-modal">
+        <div class="modal-backdrop" onclick="closeAuthModal()"></div>
+        <div class="auth-modal-content">
+            <button class="modal-close" onclick="closeAuthModal()" aria-label="Закрыть">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login" onclick="switchAuthTab('login')">Вход</button>
+                <button class="auth-tab" data-tab="register" onclick="switchAuthTab('register')">Регистрация</button>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-username">Имя пользователя</label>
+                    <input type="text" id="login-username" required placeholder="Введите имя пользователя">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Пароль</label>
+                    <input type="password" id="login-password" required placeholder="Введите пароль">
+                </div>
+                <button type="submit" class="auth-submit-btn">Войти</button>
+                <p class="auth-error" id="login-error"></p>
+            </form>
+            
+            <!-- Register Form -->
+            <form id="register-form" class="auth-form" onsubmit="handleRegister(event)">
+                <div id="register-form-fields">
+                    <div class="form-group">
+                        <label for="register-username">Имя пользователя</label>
+                        <input type="text" id="register-username" required placeholder="Придумайте имя пользователя" minlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Email</label>
+                        <input type="email" id="register-email" required placeholder="Введите email">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Пароль</label>
+                        <input type="password" id="register-password" required placeholder="Придумайте пароль" minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm">Подтвердите пароль</label>
+                        <input type="password" id="register-confirm" required placeholder="Повторите пароль">
+                    </div>
+                    <button type="submit" class="auth-submit-btn">Зарегистрироваться</button>
+                </div>
+                
+                <!-- Код подтверждения -->
+                <div id="register-verify-section" style="display: none;">
+                    <div class="verify-info">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                        <p>Код подтверждения отправлен на <strong id="verify-email-display"></strong></p>
+                        <p class="verify-hint">Проверьте почту и введите 6-значный код</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-code">Код подтверждения</label>
+                        <input type="text" id="register-code" maxlength="6" placeholder="000000" pattern="[0-9]{6}" 
+                               style="text-align: center; font-size: 24px; letter-spacing: 8px; font-weight: 600;"
+                               oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value.length === 6) verifyRegistrationCode();"
+                               onkeypress="if(event.key === 'Enter') verifyRegistrationCode();">
+                    </div>
+                    <div class="verify-actions">
+                        <button type="button" class="auth-submit-btn" onclick="verifyRegistrationCode()">Подтвердить код</button>
+                        <button type="button" class="resend-code-btn" onclick="resendRegistrationCode()">Отправить код повторно</button>
+                    </div>
+                </div>
+                
+                <p class="auth-error" id="register-error"></p>
+                <p class="auth-success" id="register-success" style="display: none;"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="auth-modal">
+        <div class="modal-backdrop" onclick="closeProfileModal()"></div>
+        <div class="auth-modal-content">
+            <button class="modal-close" onclick="closeProfileModal()" aria-label="Закрыть">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <h2 class="profile-name" id="profile-username">Пользователь</h2>
+                <p class="profile-email" id="profile-email">email@example.com</p>
+            </div>
+            
+            <div class="profile-stats" id="profile-stats">
+                <!-- Статистика загружается динамически -->
+            </div>
+            
+            <div class="profile-actions">
+                <button class="profile-btn" onclick="closeProfileModal(); showFavorites();">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                    Избранное
+                </button>
+                <button class="profile-btn" onclick="closeProfileModal(); showHistory();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    История
+                </button>
+                <button class="profile-btn" onclick="closeProfileModal(); showStats();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <line x1="12" y1="20" x2="12" y2="10"></line>
+                        <line x1="18" y1="20" x2="18" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="16"></line>
+                    </svg>
+                    Статистика
+                </button>
+                <button class="profile-btn logout-btn" onclick="if(confirm('Вы действительно хотите выйти?')) { closeProfileModal(); logout(); }">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    Выйти
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Убеждаемся что индикатор загрузки браузера скрыт
+        (function() {
+            // Помечаем страницу как полностью загруженную
+            if (document.readyState === 'complete') {
+                // Страница уже загружена
+                return;
+            }
+            
+            // Слушаем полную загрузку
+            window.addEventListener('load', function() {
+                // Все ресурсы загружены, страница полностью готова
+                this.removeEventListener('load', arguments.callee);
+            }, { once: true });
+        })();
+    </script>
+</body>
+</html>
