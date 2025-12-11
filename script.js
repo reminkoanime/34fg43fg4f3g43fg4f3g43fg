@@ -1228,17 +1228,34 @@ async function handleRegister(event) {
             pendingRegistration = { email, username, password };
             
             // Отправляем OTP код на email
+            // Используем signInWithOtp для отправки кода
             const { data, error } = await supabaseClient.auth.signInWithOtp({
                 email: email,
                 options: {
                     shouldCreateUser: true,
                     data: {
-                        username: username
-                    }
+                        username: username,
+                        display_name: username
+                    },
+                    emailRedirectTo: 'https://reminkoanime.github.io/34fg43fg4f3g43fg4f3g43fg/'
                 }
             });
             
-            if (error) throw error;
+            if (error) {
+                // Если ошибка связана с тем что пользователь уже существует, пробуем просто отправить код
+                if (error.message && (error.message.includes('already') || error.message.includes('registered'))) {
+                    // Пользователь уже существует, просто отправляем код для входа
+                    const { data: otpData, error: otpError } = await supabaseClient.auth.signInWithOtp({
+                        email: email,
+                        options: {
+                            shouldCreateUser: false
+                        }
+                    });
+                    if (otpError) throw otpError;
+                } else {
+                    throw error;
+                }
+            }
             
             // Показываем секцию ввода кода
             if (formFields) formFields.style.display = 'none';
@@ -1385,10 +1402,12 @@ async function resendRegistrationCode() {
         const { error } = await supabaseClient.auth.signInWithOtp({
             email: pendingRegistration.email,
             options: {
-                shouldCreateUser: false,
+                shouldCreateUser: true,
                 data: {
-                    username: pendingRegistration.username
-                }
+                    username: pendingRegistration.username,
+                    display_name: pendingRegistration.username
+                },
+                emailRedirectTo: 'https://reminkoanime.github.io/34fg43fg4f3g43fg4f3g43fg/'
             }
         });
         
