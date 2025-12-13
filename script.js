@@ -2003,9 +2003,10 @@ async function initializeAuth() {
             const hasOAuthParams = hashParams.has('access_token') || hashParams.has('type') || hashParams.has('code');
             
             if (hasOAuthParams) {
-                console.log('Обнаружены OAuth параметры, обрабатываем...');
-                // Даем Supabase время обработать hash параметры
-                await new Promise(resolve => setTimeout(resolve, 500));
+                console.log('Обнаружены OAuth параметры, обрабатываем...', hashParams.toString());
+                // Supabase автоматически обработает hash параметры
+                // Но нужно дать ему немного времени
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
             
             // Проверяем сессию
