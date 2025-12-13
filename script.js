@@ -1104,7 +1104,12 @@ function switchAuthTab(tab) {
 
 async function handleGoogleLogin() {
     if (!supabaseClient) {
-        alert('Ошибка: Supabase клиент не инициализирован');
+        console.error('Supabase клиент не инициализирован');
+        const errorEl = document.getElementById('login-error') || document.getElementById('register-error');
+        if (errorEl) {
+            errorEl.textContent = 'Ошибка: Supabase клиент не инициализирован';
+            errorEl.classList.add('active');
+        }
         return;
     }
     
@@ -1112,10 +1117,16 @@ async function handleGoogleLogin() {
         // Получаем текущий URL для перенаправления
         const redirectUrl = window.location.origin + window.location.pathname;
         
+        console.log('Начинаем вход через Google, redirectTo:', redirectUrl);
+        
         const { data, error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: redirectUrl
+                redirectTo: redirectUrl,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent',
+                }
             }
         });
         
@@ -1123,25 +1134,29 @@ async function handleGoogleLogin() {
             console.error('Ошибка входа через Google:', error);
             const errorEl = document.getElementById('login-error') || document.getElementById('register-error');
             if (errorEl) {
-                errorEl.textContent = error.message || 'Ошибка входа через Google';
+                errorEl.textContent = error.message || 'Ошибка входа через Google. Проверьте настройки провайдера в Supabase.';
                 errorEl.classList.add('active');
-            } else {
-                alert('Ошибка входа через Google: ' + (error.message || 'Неизвестная ошибка'));
             }
             return;
         }
         
-        // Если успешно, пользователь будет перенаправлен на Google для авторизации
-        // После успешной авторизации Google перенаправит обратно на сайт
-        // и onAuthStateChange в initializeAuth обработает сессию
+        // Если успешно, data.url будет содержать URL для перенаправления
+        if (data && data.url) {
+            window.location.href = data.url;
+        } else {
+            console.error('Не получен URL для перенаправления');
+            const errorEl = document.getElementById('login-error') || document.getElementById('register-error');
+            if (errorEl) {
+                errorEl.textContent = 'Ошибка: не удалось получить URL для авторизации';
+                errorEl.classList.add('active');
+            }
+        }
     } catch (error) {
-        console.error('Ошибка входа через Google:', error);
+        console.error('Исключение при входе через Google:', error);
         const errorEl = document.getElementById('login-error') || document.getElementById('register-error');
         if (errorEl) {
-            errorEl.textContent = error.message || 'Ошибка входа через Google';
+            errorEl.textContent = error.message || 'Ошибка входа через Google. Убедитесь, что Google провайдер включен в Supabase.';
             errorEl.classList.add('active');
-        } else {
-            alert('Ошибка входа через Google: ' + (error.message || 'Неизвестная ошибка'));
         }
     }
 }
