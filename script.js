@@ -132,6 +132,14 @@ function loadLogoImage() {
     });
 }
 
+// Проверяем OAuth callback сразу при загрузке страницы (до инициализации)
+if (window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('type='))) {
+    // Если есть OAuth параметры, инициализируем Supabase клиент раньше
+    if (typeof supabase !== 'undefined' && CONFIG.supabase && !supabaseClient) {
+        supabaseClient = supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey);
+    }
+}
+
 // Инициализация при полной загрузке страницы
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
@@ -1978,18 +1986,24 @@ async function initializeAuth() {
     // Проверяем сессию в Supabase
     if (supabaseClient) {
         try {
-            // Обрабатываем возврат от OAuth (если есть параметры в URL)
+            // Проверяем наличие hash параметров от OAuth callback
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
-            if (hashParams.has('access_token') || hashParams.has('type')) {
-                // Supabase автоматически обработает это через getSession()
+            const hasOAuthParams = hashParams.has('access_token') || hashParams.has('type') || hashParams.has('code');
+            
+            if (hasOAuthParams) {
+                console.log('Обнаружены OAuth параметры, обрабатываем...');
+                // Даем Supabase время обработать hash параметры
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
             
+            // Проверяем сессию
             const { data: { session }, error } = await supabaseClient.auth.getSession();
             if (error) {
                 console.error('Ошибка проверки сессии:', error);
             }
             
             if (session && session.user) {
+                console.log('Сессия найдена, пользователь:', session.user.email);
                 CONFIG.currentUser = {
                     id: session.user.id,
                     email: session.user.email,
@@ -2002,9 +2016,28 @@ async function initializeAuth() {
                 updateAuthUI();
                 
                 // Очищаем URL от параметров OAuth после успешного входа
-                if (hashParams.has('access_token') || hashParams.has('type')) {
+                if (hasOAuthParams) {
                     window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
                 }
+            } else if (hasOAuthParams) {
+                console.log('OAuth параметры есть, но сессия не найдена. Пытаемся повторить...');
+                // Пытаемся еще раз через небольшую задержку
+                setTimeout(async () => {
+                    const { data: { session: retrySession } } = await supabaseClient.auth.getSession();
+                    if (retrySession && retrySession.user) {
+                        CONFIG.currentUser = {
+                            id: retrySession.user.id,
+                            email: retrySession.user.email,
+                            username: retrySession.user.user_metadata?.full_name || 
+                                     retrySession.user.user_metadata?.name || 
+                                     retrySession.user.user_metadata?.username || 
+                                     retrySession.user.email.split('@')[0]
+                        };
+                        saveData();
+                        updateAuthUI();
+                        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                    }
+                }, 1000);
             }
         } catch (error) {
             console.error('Ошибка проверки сессии:', error);
@@ -2012,6 +2045,7 @@ async function initializeAuth() {
         
         // Слушаем изменения авторизации
         supabaseClient.auth.onAuthStateChange((event, session) => {
+            console.log('Auth state change:', event, session?.user?.email);
             if (event === 'SIGNED_IN' && session) {
                 CONFIG.currentUser = {
                     id: session.user.id,
@@ -2024,9 +2058,27 @@ async function initializeAuth() {
                 saveData();
                 updateAuthUI();
                 closeAuthModal(); // Закрываем модальное окно если оно открыто
+                
+                // Очищаем URL от OAuth параметров
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                if (hashParams.has('access_token') || hashParams.has('type') || hashParams.has('code')) {
+                    window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                }
             } else if (event === 'SIGNED_OUT') {
                 CONFIG.currentUser = null;
                 localStorage.removeItem('currentUser');
+                updateAuthUI();
+            } else if (event === 'TOKEN_REFRESHED' && session) {
+                // Обновляем пользователя при обновлении токена
+                CONFIG.currentUser = {
+                    id: session.user.id,
+                    email: session.user.email,
+                    username: session.user.user_metadata?.full_name || 
+                             session.user.user_metadata?.name || 
+                             session.user.user_metadata?.username || 
+                             session.user.email.split('@')[0]
+                };
+                saveData();
                 updateAuthUI();
             }
         });
