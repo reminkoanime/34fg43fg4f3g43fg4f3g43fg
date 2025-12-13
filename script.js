@@ -1122,8 +1122,19 @@ async function handleGoogleLogin() {
     }
     
     try {
-        // Получаем текущий URL для перенаправления
-        const redirectUrl = window.location.origin + window.location.pathname;
+        // Определяем правильный redirect URL
+        // Для GitHub Pages используем полный URL, для локальной разработки - текущий URL
+        let redirectUrl;
+        if (window.location.hostname === 'reminkoanime.github.io' || window.location.hostname.includes('github.io')) {
+            redirectUrl = 'https://reminkoanime.github.io/34fg43fg4f3g43fg4f3g43fg/';
+        } else {
+            // Локальная разработка или другой хостинг
+            redirectUrl = window.location.origin + window.location.pathname;
+            // Убираем trailing slash если это не корень
+            if (redirectUrl.endsWith('/') && redirectUrl !== window.location.origin + '/') {
+                redirectUrl = redirectUrl.slice(0, -1);
+            }
+        }
         
         console.log('Начинаем вход через Google, redirectTo:', redirectUrl);
         
@@ -1150,6 +1161,7 @@ async function handleGoogleLogin() {
         
         // Если успешно, data.url будет содержать URL для перенаправления
         if (data && data.url) {
+            console.log('Перенаправляем на:', data.url);
             window.location.href = data.url;
         } else {
             console.error('Не получен URL для перенаправления');
