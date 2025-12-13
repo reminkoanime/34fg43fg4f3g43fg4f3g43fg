@@ -284,16 +284,66 @@
             
             <!-- Login Form -->
             <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
-                <div class="form-group">
-                    <label for="login-username">Имя пользователя</label>
-                    <input type="text" id="login-username" required placeholder="Введите имя пользователя">
+                <div id="login-form-fields">
+                    <div class="form-group">
+                        <label for="login-username">Email</label>
+                        <input type="email" id="login-username" required placeholder="Введите email">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Пароль</label>
+                        <input type="password" id="login-password" required placeholder="Введите пароль">
+                        <a href="#" class="forgot-password-link" onclick="event.preventDefault(); handleForgotPassword();">Забыли пароль?</a>
+                    </div>
+                    <button type="submit" class="auth-submit-btn">Войти</button>
                 </div>
-                <div class="form-group">
-                    <label for="login-password">Пароль</label>
-                    <input type="password" id="login-password" required placeholder="Введите пароль">
-                    <a href="#" class="forgot-password-link" onclick="event.preventDefault(); handleForgotPassword();">Забыли пароль?</a>
+                
+                <!-- Код сброса пароля -->
+                <div id="reset-password-code-section" style="display: none;">
+                    <div class="verify-info">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                        <p>Код восстановления отправлен на <strong id="reset-email-display"></strong></p>
+                        <p class="verify-hint">Проверьте почту и введите код (6-8 цифр). Скопируйте весь код из письма!</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="reset-code">Код подтверждения</label>
+                        <input type="text" id="reset-code" maxlength="8" placeholder="000000" pattern="[0-9]{6,8}" 
+                               style="text-align: center; font-size: 24px; letter-spacing: 8px; font-weight: 600;"
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '').substring(0, 8); updateResetButton();"
+                               onkeypress="if(event.key === 'Enter') verifyResetCode();">
+                    </div>
+                    <div class="verify-actions">
+                        <button type="button" id="verify-reset-btn" class="auth-submit-btn" onclick="verifyResetCode()">Подтвердить код</button>
+                        <button type="button" class="resend-code-btn" onclick="resendResetCode()">Отправить код повторно</button>
+                        <button type="button" class="resend-code-btn" onclick="cancelPasswordReset()">Отмена</button>
+                    </div>
                 </div>
-                <button type="submit" class="auth-submit-btn">Войти</button>
+                
+                <!-- Форма нового пароля -->
+                <div id="reset-password-form-section" style="display: none;">
+                    <div class="verify-info">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <p>Введите новый пароль</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-password">Новый пароль</label>
+                        <input type="password" id="new-password" required placeholder="Придумайте новый пароль" minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm-new-password">Подтвердите новый пароль</label>
+                        <input type="password" id="confirm-new-password" required placeholder="Повторите новый пароль">
+                    </div>
+                    <div class="verify-actions">
+                        <button type="button" id="save-new-password-btn" class="auth-submit-btn" onclick="setNewPassword()">Сохранить новый пароль</button>
+                        <button type="button" class="resend-code-btn" onclick="cancelPasswordReset()">Отмена</button>
+                    </div>
+                </div>
+                
                 <p class="auth-error" id="login-error"></p>
                 <p class="auth-success" id="password-reset-success" style="display: none;"></p>
             </form>

@@ -1043,6 +1043,20 @@ function closeAuthModal() {
         const policyCheck = document.getElementById('register-policy-check');
         if (policyCheck) policyCheck.checked = false;
         updateRegisterButton();
+        
+        // Сбрасываем форму сброса пароля
+        const loginFields = document.getElementById('login-form-fields');
+        const codeSection = document.getElementById('reset-password-code-section');
+        const passwordFormSection = document.getElementById('reset-password-form-section');
+        if (codeSection) codeSection.style.display = 'none';
+        if (passwordFormSection) passwordFormSection.style.display = 'none';
+        if (loginFields) loginFields.style.display = 'block';
+        document.getElementById('login-form')?.reset();
+        document.getElementById('reset-code').value = '';
+        document.getElementById('new-password').value = '';
+        document.getElementById('confirm-new-password').value = '';
+        pendingPasswordReset.email = null;
+        updateResetButton();
     }
 }
 
@@ -1076,6 +1090,16 @@ function switchAuthTab(tab) {
         success.style.display = 'none';
         success.textContent = '';
     });
+    
+    // Сбрасываем форму сброса пароля при переключении вкладок
+    const loginFields = document.getElementById('login-form-fields');
+    const codeSection = document.getElementById('reset-password-code-section');
+    const passwordFormSection = document.getElementById('reset-password-form-section');
+    if (codeSection) codeSection.style.display = 'none';
+    if (passwordFormSection) passwordFormSection.style.display = 'none';
+    if (loginFields) loginFields.style.display = 'block';
+    pendingPasswordReset.email = null;
+    updateResetButton();
 }
 
 async function handleLogin(event) {
@@ -1386,6 +1410,7 @@ async function verifyRegistrationCode() {
         if (data.user && data.session) {
             // Регистрируем пользователя с паролем (так как OTP создал только пользователя)
             // Устанавливаем пароль и метаданные
+            // Важно: делаем это сразу после verifyOtp, пока сессия активна
             const { error: updateError } = await supabaseClient.auth.updateUser({
                 password: pendingRegistration.password,
                 data: {
@@ -1395,24 +1420,35 @@ async function verifyRegistrationCode() {
             });
             
             if (updateError) {
-                // Если не удалось обновить пароль, пробуем через signUp
-                console.warn('Ошибка обновления пароля:', updateError);
-                // Пробуем установить пароль через повторную авторизацию
+                console.error('Ошибка обновления пароля при регистрации:', updateError);
+                // Если не удалось установить пароль, пробуем еще раз
                 try {
-                    const { error: signInError } = await supabaseClient.auth.signInWithPassword({
-                        email: pendingRegistration.email,
+                    const { error: retryError } = await supabaseClient.auth.updateUser({
                         password: pendingRegistration.password
                     });
-                    if (signInError) {
-                        // Если пароль не установлен, пробуем установить через API
-                        // В Supabase после verifyOtp пароль нужно установить явно
-                        await supabaseClient.auth.updateUser({
-                            password: pendingRegistration.password
-                        });
+                    if (retryError) {
+                        console.error('Повторная попытка установки пароля не удалась:', retryError);
+                        // Показываем предупреждение, но продолжаем регистрацию
+                        console.warn('Пароль может быть не установлен. Пользователю нужно будет использовать сброс пароля.');
                     }
                 } catch (err) {
-                    console.error('Ошибка установки пароля:', err);
+                    console.error('Критическая ошибка установки пароля:', err);
                 }
+            }
+            
+            // Проверяем что пароль установлен - пробуем войти
+            try {
+                const { error: testSignInError } = await supabaseClient.auth.signInWithPassword({
+                    email: pendingRegistration.email,
+                    password: pendingRegistration.password
+                });
+                if (testSignInError) {
+                    console.warn('Пароль не установлен правильно. Ошибка тестового входа:', testSignInError);
+                } else {
+                    console.log('Пароль успешно установлен и протестирован');
+                }
+            } catch (testErr) {
+                console.error('Ошибка тестирования пароля:', testErr);
             }
             
             // Сохраняем пароль в метаданных (для локального использования, если нужно)
@@ -1522,10 +1558,16 @@ async function logout() {
     updateAuthUI();
 }
 
+let pendingPasswordReset = {
+    email: null
+};
+
 async function handleForgotPassword() {
     const email = document.getElementById('login-username').value.trim();
     const errorEl = document.getElementById('login-error');
     const successEl = document.getElementById('password-reset-success');
+    const loginFields = document.getElementById('login-form-fields');
+    const codeSection = document.getElementById('reset-password-code-section');
     
     if (!email) {
         errorEl.textContent = 'Введите email для восстановления пароля';
@@ -1543,18 +1585,248 @@ async function handleForgotPassword() {
         errorEl.classList.remove('active');
         successEl.style.display = 'none';
         
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-            redirectTo: 'https://reminkoanime.github.io/34fg43fg4f3g43fg4f3g43fg/'
+        // Отправляем OTP код для сброса пароля
+        const { data, error } = await supabaseClient.auth.signInWithOtp({
+            email: email,
+            options: {
+                shouldCreateUser: false // Не создавать пользователя, только отправить код
+            }
+        });
+        
+        if (error) {
+            // Если пользователь не найден
+            if (error.message && (error.message.includes('not found') || error.message.includes('not registered'))) {
+                errorEl.textContent = 'Пользователь с таким email не найден';
+                errorEl.classList.add('active');
+                return;
+            }
+            throw error;
+        }
+        
+        // Сохраняем email для дальнейшего использования
+        pendingPasswordReset.email = email;
+        
+        // Показываем секцию ввода кода
+        if (loginFields) loginFields.style.display = 'none';
+        if (codeSection) {
+            codeSection.style.display = 'block';
+            document.getElementById('reset-email-display').textContent = email;
+            document.getElementById('reset-code').focus();
+        }
+        
+    } catch (error) {
+        errorEl.textContent = error.message || 'Ошибка отправки кода восстановления';
+        errorEl.classList.add('active');
+    }
+}
+
+function updateResetButton() {
+    const code = document.getElementById('reset-code')?.value.trim().replace(/[^0-9]/g, '') || '';
+    const verifyBtn = document.getElementById('verify-reset-btn');
+    
+    if (verifyBtn) {
+        const codeValid = code.length >= 6 && code.length <= 8;
+        verifyBtn.disabled = !codeValid;
+    }
+}
+
+async function verifyResetCode() {
+    const code = document.getElementById('reset-code').value.trim().replace(/[^0-9]/g, '');
+    const errorEl = document.getElementById('login-error');
+    const codeSection = document.getElementById('reset-password-code-section');
+    const passwordFormSection = document.getElementById('reset-password-form-section');
+    const verifyBtn = document.getElementById('verify-reset-btn');
+    
+    errorEl.classList.remove('active');
+    
+    if (!code || code.length < 6 || code.length > 8) {
+        errorEl.textContent = 'Введите код от 6 до 8 цифр';
+        errorEl.classList.add('active');
+        return;
+    }
+    
+    if (!pendingPasswordReset.email || !supabaseClient) {
+        errorEl.textContent = 'Ошибка: данные не найдены';
+        errorEl.classList.add('active');
+        return;
+    }
+    
+    if (verifyBtn) {
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = 'Проверка...';
+    }
+    
+    try {
+        // Проверяем OTP код
+        const { data, error } = await supabaseClient.auth.verifyOtp({
+            email: pendingPasswordReset.email,
+            token: code,
+            type: 'email'
         });
         
         if (error) throw error;
         
-        successEl.textContent = 'Ссылка для сброса пароля отправлена на ' + email;
-        successEl.style.display = 'block';
+        if (data.user) {
+            // Код подтвержден, показываем форму нового пароля
+            if (codeSection) codeSection.style.display = 'none';
+            if (passwordFormSection) {
+                passwordFormSection.style.display = 'block';
+                document.getElementById('new-password').focus();
+            }
+        }
     } catch (error) {
-        errorEl.textContent = error.message || 'Ошибка отправки письма для сброса пароля';
+        errorEl.textContent = error.message || 'Неверный код. Проверьте и попробуйте снова.';
         errorEl.classList.add('active');
+        document.getElementById('reset-code').value = '';
+        updateResetButton();
+    } finally {
+        if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Подтвердить код';
+            updateResetButton();
+        }
     }
+}
+
+async function setNewPassword() {
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-new-password').value;
+    const errorEl = document.getElementById('login-error');
+    const successEl = document.getElementById('password-reset-success');
+    const passwordFormSection = document.getElementById('reset-password-form-section');
+    const loginFields = document.getElementById('login-form-fields');
+    const saveBtn = document.getElementById('save-new-password-btn');
+    
+    errorEl.classList.remove('active');
+    successEl.style.display = 'none';
+    
+    if (!newPassword || !confirmPassword) {
+        errorEl.textContent = 'Заполните все поля';
+        errorEl.classList.add('active');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        errorEl.textContent = 'Пароль должен быть не менее 6 символов';
+        errorEl.classList.add('active');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        errorEl.textContent = 'Пароли не совпадают';
+        errorEl.classList.add('active');
+        return;
+    }
+    
+    if (!supabaseClient) {
+        errorEl.textContent = 'Ошибка: Supabase не подключен';
+        errorEl.classList.add('active');
+        return;
+    }
+    
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Сохранение...';
+    }
+    
+    try {
+        // Обновляем пароль
+        const { error } = await supabaseClient.auth.updateUser({
+            password: newPassword
+        });
+        
+        if (error) throw error;
+        
+        // Пароль успешно изменен
+        successEl.textContent = 'Пароль успешно изменен! Теперь вы можете войти.';
+        successEl.style.display = 'block';
+        
+        // Очищаем формы
+        document.getElementById('new-password').value = '';
+        document.getElementById('confirm-new-password').value = '';
+        document.getElementById('reset-code').value = '';
+        pendingPasswordReset.email = null;
+        
+        // Возвращаемся к форме входа через 2 секунды
+        setTimeout(() => {
+            if (passwordFormSection) passwordFormSection.style.display = 'none';
+            if (loginFields) loginFields.style.display = 'block';
+            successEl.style.display = 'none';
+            document.getElementById('login-password').value = '';
+            updateResetButton();
+        }, 2000);
+        
+    } catch (error) {
+        errorEl.textContent = error.message || 'Ошибка изменения пароля';
+        errorEl.classList.add('active');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Сохранить новый пароль';
+        }
+    }
+}
+
+async function resendResetCode() {
+    const errorEl = document.getElementById('login-error');
+    const resendBtn = document.querySelector('#reset-password-code-section .resend-code-btn');
+    
+    if (!pendingPasswordReset.email || !supabaseClient) {
+        errorEl.textContent = 'Ошибка: данные не найдены';
+        errorEl.classList.add('active');
+        return;
+    }
+    
+    if (resendBtn) {
+        resendBtn.disabled = true;
+        resendBtn.textContent = 'Отправка...';
+    }
+    
+    try {
+        const { error } = await supabaseClient.auth.signInWithOtp({
+            email: pendingPasswordReset.email,
+            options: {
+                shouldCreateUser: false
+            }
+        });
+        
+        if (error) throw error;
+        
+        errorEl.classList.remove('active');
+        alert('Код отправлен повторно на ' + pendingPasswordReset.email);
+    } catch (error) {
+        errorEl.textContent = error.message || 'Ошибка отправки кода';
+        errorEl.classList.add('active');
+    } finally {
+        if (resendBtn) {
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Отправить код повторно';
+        }
+    }
+}
+
+function cancelPasswordReset() {
+    const loginFields = document.getElementById('login-form-fields');
+    const codeSection = document.getElementById('reset-password-code-section');
+    const passwordFormSection = document.getElementById('reset-password-form-section');
+    const errorEl = document.getElementById('login-error');
+    const successEl = document.getElementById('password-reset-success');
+    
+    // Очищаем все поля
+    document.getElementById('reset-code').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('confirm-new-password').value = '';
+    pendingPasswordReset.email = null;
+    
+    // Скрываем секции
+    if (codeSection) codeSection.style.display = 'none';
+    if (passwordFormSection) passwordFormSection.style.display = 'none';
+    if (loginFields) loginFields.style.display = 'block';
+    
+    // Очищаем сообщения
+    errorEl.classList.remove('active');
+    successEl.style.display = 'none';
+    updateResetButton();
 }
 
 async function resendConfirmationEmail(email) {
