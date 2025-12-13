@@ -1102,6 +1102,50 @@ function switchAuthTab(tab) {
     updateResetButton();
 }
 
+async function handleGoogleLogin() {
+    if (!supabaseClient) {
+        alert('Ошибка: Supabase клиент не инициализирован');
+        return;
+    }
+    
+    try {
+        // Получаем текущий URL для перенаправления
+        const redirectUrl = window.location.origin + window.location.pathname;
+        
+        const { data, error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: redirectUrl
+            }
+        });
+        
+        if (error) {
+            console.error('Ошибка входа через Google:', error);
+            const errorEl = document.getElementById('login-error') || document.getElementById('register-error');
+            if (errorEl) {
+                errorEl.textContent = error.message || 'Ошибка входа через Google';
+                errorEl.classList.add('active');
+            } else {
+                alert('Ошибка входа через Google: ' + (error.message || 'Неизвестная ошибка'));
+            }
+            return;
+        }
+        
+        // Если успешно, пользователь будет перенаправлен на Google для авторизации
+        // После успешной авторизации Google перенаправит обратно на сайт
+        // и onAuthStateChange в initializeAuth обработает сессию
+    } catch (error) {
+        console.error('Ошибка входа через Google:', error);
+        const errorEl = document.getElementById('login-error') || document.getElementById('register-error');
+        if (errorEl) {
+            errorEl.textContent = error.message || 'Ошибка входа через Google';
+            errorEl.classList.add('active');
+        } else {
+            alert('Ошибка входа через Google: ' + (error.message || 'Неизвестная ошибка'));
+        }
+    }
+}
+
 async function handleLogin(event) {
     event.preventDefault();
     
@@ -1919,14 +1963,33 @@ async function initializeAuth() {
     // Проверяем сессию в Supabase
     if (supabaseClient) {
         try {
-            const { data: { session } } = await supabaseClient.auth.getSession();
+            // Обрабатываем возврат от OAuth (если есть параметры в URL)
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            if (hashParams.has('access_token') || hashParams.has('type')) {
+                // Supabase автоматически обработает это через getSession()
+            }
+            
+            const { data: { session }, error } = await supabaseClient.auth.getSession();
+            if (error) {
+                console.error('Ошибка проверки сессии:', error);
+            }
+            
             if (session && session.user) {
                 CONFIG.currentUser = {
                     id: session.user.id,
                     email: session.user.email,
-                    username: session.user.user_metadata?.username || session.user.email.split('@')[0]
+                    username: session.user.user_metadata?.full_name || 
+                             session.user.user_metadata?.name || 
+                             session.user.user_metadata?.username || 
+                             session.user.email.split('@')[0]
                 };
                 saveData();
+                updateAuthUI();
+                
+                // Очищаем URL от параметров OAuth после успешного входа
+                if (hashParams.has('access_token') || hashParams.has('type')) {
+                    window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                }
             }
         } catch (error) {
             console.error('Ошибка проверки сессии:', error);
@@ -1938,10 +2001,14 @@ async function initializeAuth() {
                 CONFIG.currentUser = {
                     id: session.user.id,
                     email: session.user.email,
-                    username: session.user.user_metadata?.username || session.user.email.split('@')[0]
+                    username: session.user.user_metadata?.full_name || 
+                             session.user.user_metadata?.name || 
+                             session.user.user_metadata?.username || 
+                             session.user.email.split('@')[0]
                 };
                 saveData();
                 updateAuthUI();
+                closeAuthModal(); // Закрываем модальное окно если оно открыто
             } else if (event === 'SIGNED_OUT') {
                 CONFIG.currentUser = null;
                 localStorage.removeItem('currentUser');
