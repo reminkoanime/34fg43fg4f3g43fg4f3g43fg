@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: minko-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=minko
+    networks:
+      - minko-network
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: minko-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/minko
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-key-in-production}
+      - CLIENT_URL=${CLIENT_URL:-http://localhost:5173}
+      - NODE_ENV=production
+    volumes:
+      - ./server/uploads:/app/uploads
+    depends_on:
+      - mongodb
+    networks:
+      - minko-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: minko-frontend
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:5000/api}
+    depends_on:
+      - backend
+    networks:
+      - minko-network
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+
+networks:
+  minko-network:
+    driver: bridge
+
